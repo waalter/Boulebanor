@@ -74,6 +74,7 @@
   #sheet.open{display:flex}
   #sheet .card{background:#fff;width:100%;max-width:480px;border-radius:24px 24px 0 0;padding:22px 20px calc(20px + env(safe-area-inset-bottom));box-shadow:0 -10px 40px rgba(23,18,15,.15);max-height:92vh;overflow:auto}
   @media (min-width:700px){#sheet{align-items:center}#sheet .card{border-radius:24px}}
+  @media (max-width:699px){#sheet .card{padding-bottom:calc(84px + env(safe-area-inset-bottom))}} /* fri yta under knapparna för Netlify-märket (192x64 nere till höger) */
   #sheet h2{margin:0 0 2px;font-size:19px;letter-spacing:-.01em}
   #sheet .sub{color:var(--muted);font-size:14px;margin:0 0 16px}
   #sheet fieldset{border:0;padding:0;margin:0 0 14px}
