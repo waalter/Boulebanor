@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#f7f5f2">
+<title>Boulebanor i Sverige – karta över gratis banor</title>
+<meta name="description" content="Karta över gratis, allmänna boulebanor utomhus i hela Sverige. Sök på bana, ort eller adress.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='%2317120f'/%3E%3Ccircle cx='12' cy='12' r='3' fill='%23ffa8cd'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="lib/leaflet.css">
+<link rel="stylesheet" href="lib/maplibre-gl.css">
+<link rel="stylesheet" href="lib/MarkerCluster.css">
+<style>
+  :root{--ink:#17120f;--muted:#6f6a66;--line:#ece8e3;--bg:#f7f5f2;--card:#fff;--pink:#ffa8cd;--pinkd:#e2668f;--sage:#3e8a6e;--sagel:#e3f1ea;--lav:#8f8aa8;--lavl:#efedf6;--sh:0 6px 24px rgba(23,18,15,.10),0 1px 3px rgba(23,18,15,.06)}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter","Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  #map{position:fixed;inset:0;background:#eef0ee}
+  #top{position:fixed;z-index:1000;top:calc(12px + env(safe-area-inset-top));left:12px;right:12px;max-width:540px;margin:0 auto}
+  #brand{display:flex;align-items:center;justify-content:space-between;margin:0 4px 8px}
+  #brand .t{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px;letter-spacing:-.01em;background:rgba(255,255,255,.88);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding:7px 12px 7px 8px;border-radius:999px;box-shadow:var(--sh)}
+  #brand .dot{width:20px;height:20px;border-radius:50%;background:var(--ink);position:relative}
+  #brand .dot:after{content:"";position:absolute;width:6px;height:6px;border-radius:50%;background:var(--pink);top:4px;left:4px}
+  #count{font-size:12.5px;color:var(--muted);background:rgba(255,255,255,.88);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding:7px 12px;border-radius:999px;box-shadow:var(--sh);font-weight:500}
+  #box{display:flex;align-items:center;background:var(--card);border-radius:18px;box-shadow:var(--sh);padding:0 6px 0 14px;border:1px solid rgba(23,18,15,.04)}
+  #box svg{flex:none;width:18px;height:18px;color:var(--muted)}
+  #q{flex:1;border:0;outline:0;font-size:16px;padding:14px 8px;background:transparent;min-width:0;color:var(--ink);-webkit-appearance:none}
+  #q::placeholder{color:#9b958f}
+  #q::-webkit-search-cancel-button{display:none}
+  #clear{border:0;background:#f2efeb;color:var(--muted);font-size:16px;width:28px;height:28px;border-radius:50%;cursor:pointer;display:none;line-height:28px;padding:0}
+  #res{background:var(--card);border-radius:16px;box-shadow:var(--sh);margin-top:8px;max-height:52vh;overflow:auto;display:none;-webkit-overflow-scrolling:touch}
+  .r{padding:12px 16px;border-bottom:1px solid var(--line);cursor:pointer}
+  .r:last-child{border-bottom:0}
+  .r:active,.r:hover{background:#faf8f6}
+  .r b{display:block;font-size:15px;font-weight:600}
+  .r span{font-size:13px;color:var(--muted)}
+  .r.place b{color:var(--pinkd)}
+  .r .h{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#a19b95;padding:10px 16px 4px;cursor:default}
+  #loc{position:fixed;z-index:1000;right:14px;bottom:calc(84px + env(safe-area-inset-bottom));width:52px;height:52px;border-radius:50%;border:0;background:var(--card);box-shadow:var(--sh);cursor:pointer;display:flex;align-items:center;justify-content:center}
+  #loc svg{width:22px;height:22px}
+  #loc span{position:absolute;right:60px;white-space:nowrap;background:var(--ink);color:#fff;font-size:13px;font-weight:600;padding:8px 12px;border-radius:999px}
+  #toast{position:fixed;z-index:1001;left:50%;transform:translateX(-50%);bottom:calc(150px + env(safe-area-inset-bottom));background:var(--ink);color:#fff;padding:10px 16px;border-radius:999px;font-size:14px;display:none;max-width:86vw;text-align:center}
+  .pin{width:16px;height:16px;border-radius:50%;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(23,18,15,.28)}
+  .pin{background:var(--sage)}
+  .me{width:16px;height:16px;border-radius:50%;background:#3d7cf0;border:3px solid #fff;box-shadow:0 0 0 7px rgba(61,124,240,.22)}
+  .marker-cluster{background:rgba(255,168,205,.35)!important}
+  .marker-cluster div{background:var(--ink)!important;color:#fff!important;font-weight:600;font-size:12px;font-family:inherit}
+  .marker-cluster span{line-height:30px}
+  .leaflet-popup-content-wrapper{border-radius:18px;box-shadow:var(--sh);padding:2px}
+  .leaflet-popup-content{margin:16px 18px 14px;font-family:inherit;color:var(--ink)}
+  .leaflet-popup-tip{box-shadow:none}
+  .leaflet-container a.leaflet-popup-close-button{top:8px;right:8px;color:#a19b95}
+  .pop h3{margin:0 18px 6px 0;font-size:16.5px;line-height:1.25;letter-spacing:-.01em}
+  .pop .ln{font-size:14px;margin:3px 0;color:#3b3632;line-height:1.35}
+  .pop .nt{font-size:12.5px;color:var(--muted);margin:6px 0 2px;line-height:1.4}
+  .pop button.fix{display:block;margin:10px auto 0;border:0;background:none;color:#8a847e;font-size:12.5px;text-decoration:underline;text-underline-offset:2px;cursor:pointer;font-family:inherit;padding:4px}
+  #sheet{position:fixed;inset:0;z-index:2000;display:none;background:rgba(23,18,15,.28);align-items:flex-end;justify-content:center}
+  #sheet.open{display:flex}
+  #sheet .card{background:#fff;width:100%;max-width:480px;border-radius:24px 24px 0 0;padding:22px 20px calc(20px + env(safe-area-inset-bottom));box-shadow:0 -10px 40px rgba(23,18,15,.15);max-height:92vh;overflow:auto}
+  @media (min-width:700px){#sheet{align-items:center}#sheet .card{border-radius:24px}}
+  #sheet h2{margin:0 0 2px;font-size:19px;letter-spacing:-.01em}
+  #sheet .sub{color:var(--muted);font-size:14px;margin:0 0 16px}
+  #sheet fieldset{border:0;padding:0;margin:0 0 14px}
+  #sheet legend,#sheet label.l{font-size:13px;font-weight:600;margin-bottom:8px;display:block}
+  .opts{display:flex;flex-wrap:wrap;gap:8px}
+  .opts label{position:relative}
+  .opts input{position:absolute;opacity:0}
+  .opts span{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:9px 14px;font-size:14px;cursor:pointer;background:#fff}
+  .opts input:checked+span{background:var(--ink);color:#fff;border-color:var(--ink)}
+  #sheet textarea,#sheet input[type=email]{width:100%;border:1px solid var(--line);border-radius:14px;padding:12px 14px;font-size:16px;font-family:inherit;background:#faf9f7;outline:0;margin-bottom:14px}
+  #sheet textarea{min-height:90px;resize:vertical}
+  #sheet textarea:focus,#sheet input[type=email]:focus{border-color:#cfc8c1;background:#fff}
+  #sheet .btns{display:flex;gap:10px;margin-top:4px}
+  #sheet .btns button{flex:1;border:0;border-radius:999px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
+  #sheet .send{background:var(--pink);color:var(--ink)} #sheet .cancel{background:#f2efeb;color:var(--ink)}
+  #sheet .hp{position:absolute;left:-9999px}
+  #sheet .err{color:#b3261e;font-size:13px;margin:0 0 10px;display:none}
+  #thanks{text-align:center;padding:14px 0 6px;display:none}
+  #thanks .ok{width:54px;height:54px;border-radius:50%;background:var(--sagel);color:#2b6b53;font-size:26px;line-height:54px;margin:0 auto 12px}
+  .pop a.dir{display:block;text-align:center;margin-top:12px;background:var(--pink);color:var(--ink)!important;text-decoration:none;padding:11px 14px;border-radius:999px;font-weight:700;font-size:14px}
+  .leaflet-control-zoom{display:none}
+  .leaflet-control-attribution{font-size:10px;background:rgba(255,255,255,.7)!important;border-radius:8px 0 0 0}
+  @media (min-width:700px){.leaflet-control-zoom{display:block;border:0!important;box-shadow:var(--sh)!important;border-radius:14px!important;overflow:hidden}}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="top">
+  <div id="brand"><div class="t"><span class="dot"></span>Boulebanor Sverige</div><div id="count">Laddar…</div></div>
+  <div id="box">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+    <input id="q" type="search" placeholder="Sök bana, ort eller adress" autocomplete="off" enterkeyhint="search" aria-label="Sök">
+    <button id="clear" aria-label="Rensa">✕</button>
+  </div>
+  <div id="res"></div>
+</div>
+<button id="loc" aria-label="Min plats" title="Min plats">
+  <svg viewBox="0 0 24 24" fill="none" stroke="#17120f" stroke-width="2" stroke-linecap="round"><path d="M12 2l7 19-7-4-7 4z" transform="rotate(45 12 12)" fill="#17120f"/></svg>
+</button>
+<div id="toast"></div>
+<div id="sheet" role="dialog" aria-modal="true" aria-labelledby="fh">
+  <div class="card">
+    <div id="fwrap">
+      <h2 id="fh">Föreslå ändring</h2>
+      <p class="sub" id="fname"></p>
+      <form name="andring" id="fform" method="POST" action="/" data-netlify="true" netlify-honeypot="bot-field">
+        <input type="hidden" name="form-name" value="andring">
+        <input type="hidden" name="bana_id">
+        <input type="hidden" name="bana_namn">
+        <input type="hidden" name="lat">
+        <input type="hidden" name="lng">
+        <p class="hp"><label>Fyll inte i detta: <input name="bot-field" tabindex="-1" autocomplete="off"></label></p>
+        <fieldset>
+          <legend>Vad stämmer inte?</legend>
+          <div class="opts">
+            <label><input type="radio" name="fel" value="finns inte" required><span>Finns inte</span></label>
+            <label><input type="radio" name="fel" value="fel plats"><span>Fel plats</span></label>
+            <label><input type="radio" name="fel" value="fel info"><span>Fel info</span></label>
+            <label><input type="radio" name="fel" value="annat"><span>Annat</span></label>
+          </div>
+        </fieldset>
+        <label class="l" for="fmsg">Berätta gärna mer</label>
+        <textarea id="fmsg" name="beskrivning" maxlength="2000" placeholder="T.ex. banan flyttades till andra sidan parken"></textarea>
+        <label class="l" for="fmail">Din e-post (frivilligt)</label>
+        <input id="fmail" type="email" name="epost" autocomplete="email" placeholder="Om du vill att vi återkopplar">
+        <p class="err" id="ferr">Det gick inte att skicka just nu. Försök igen om en stund.</p>
+        <div class="btns"><button type="button" class="cancel" id="fcancel">Avbryt</button><button type="submit" class="send" id="fsend">Skicka</button></div>
+      </form>
+    </div>
+    <div id="thanks"><div class="ok">✓</div><h2>Tack!</h2><p class="sub">Vi tittar på ditt förslag och uppdaterar kartan.</p><div class="btns"><button type="button" class="send" id="fclose">Stäng</button></div></div>
+  </div>
+</div>
+
+<script src="lib/leaflet.js"></script>
+<script src="lib/leaflet.markercluster.js"></script>
+<script src="lib/maplibre-gl.js"></script>
+<script src="lib/leaflet-maplibre-gl.js"></script>
+<script src="places.js"></script>
+<script>
+(function(){
+  // PLACES: [namn, lat, lng, adress, område, stad, verifierad, källa, källlänk, anteckning, ungefärligt, belyst, antal, underlag]
+  var P = window.PLACES || [];
+  var map = L.map('map', {zoomControl:true, minZoom:4, maxZoom:19, worldCopyJump:true, tap:true});
+  map.zoomControl.setPosition('bottomleft');
+  L.maplibreGL({
+    style: 'https://tiles.openfreemap.org/styles/bright',
+    attribution: '<a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> &copy; <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
+  }).addTo(map);
+  map.fitBounds(L.latLngBounds([55.2, 10.9], [69.1, 24.2]));
+
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function popup(i){var p=P[i];
+    var h='<div class="pop"><h3>'+esc(p[0])+'</h3>';
+    var addr=[p[3], p[4], p[5]].filter(function(x,i,a){return x && a.indexOf(x)===i;}).join(', ');
+    if(addr) h+='<div class="ln">📍 '+esc(addr)+'</div>';
+    var ex=[]; if(p[12]>1) ex.push(p[12]+' banor'); if(p[11]) ex.push('belyst'); if(p[13]) ex.push(p[13]);
+    if(ex.length) h+='<div class="ln">'+esc(ex.join(' · '))+'</div>';
+    var nt=String(p[9]||''); if(nt && !/OSM|OSÄKER|osäker|kandidat|verifier|bekräft/i.test(nt)) h+='<div class="nt">'+esc(nt)+'</div>';
+    h+='<a class="dir" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination='+p[1]+','+p[2]+'">Vägbeskrivning</a><button class="fix" data-fix="'+i+'">Föreslå ändring</button></div>';
+    return h;
+  }
+  var icon=L.divIcon({className:'',html:'<div class="pin"></div>',iconSize:[21,21],iconAnchor:[10,10],popupAnchor:[0,-9]});
+  var cluster=L.markerClusterGroup({chunkedLoading:true,showCoverageOnHover:false,maxClusterRadius:48,spiderfyOnMaxZoom:true,
+    iconCreateFunction:function(c){var n=c.getChildCount(),s=n<10?34:n<100?40:48;
+      return L.divIcon({html:'<div style="width:'+(s-8)+'px;height:'+(s-8)+'px;margin:4px;border-radius:50%;display:flex;align-items:center;justify-content:center"><span style="line-height:1">'+n+'</span></div>',className:'marker-cluster',iconSize:[s,s]});}});
+  var markers=P.map(function(p,i){
+    var m=L.marker([p[1],p[2]],{icon:icon,title:p[0]});
+    m.bindPopup(function(){return popup(i);},{maxWidth:290,minWidth:230,autoPanPaddingTopLeft:[10,150]});
+    return m;
+  });
+  cluster.addLayers(markers); map.addLayer(cluster);
+  document.getElementById('count').textContent=P.length+' banor';
+  window.__PINS=markers.length;
+
+  // Sök
+  var q=document.getElementById('q'),res=document.getElementById('res'),clr=document.getElementById('clear');
+  function norm(s){return String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');}
+  var idx=P.map(function(p){return norm([p[0],p[3],p[4],p[5]].join(' '));});
+  var timer,nomCtl;
+  function hide(){res.style.display='none';res.innerHTML='';}
+  function goTo(i){hide();q.blur();
+    cluster.zoomToShowLayer(markers[i],function(){markers[i].openPopup();});}
+  function render(local,places){
+    var h='';
+    if(places.length){h+='<div class="h">Platser</div>';places.forEach(function(pl,k){h+='<div class="r place" data-p="'+k+'"><b>'+esc(pl.name)+'</b><span>'+esc(pl.desc)+'</span></div>';});}
+    if(local.length){h+='<div class="h">Boulebanor</div>';local.forEach(function(i){var p=P[i];
+      h+='<div class="r" data-i="'+i+'"><b>'+esc(p[0])+'</b><span>'+esc([p[3]||p[4],p[5]].filter(Boolean).join(' · '))+'</span></div>';});}
+    if(!h) h='<div class="r"><span>Inga träffar än…</span></div>';
+    res.innerHTML=h;res.style.display='block';
+    Array.prototype.forEach.call(res.querySelectorAll('.r'),function(el){el.onclick=function(){
+      if(el.dataset.i!=null) goTo(+el.dataset.i);
+      else if(el.dataset.p!=null){var pl=places[+el.dataset.p];hide();q.blur();if(pl.bb) map.fitBounds(pl.bb,{maxZoom:14}); else map.setView(pl.ll,13);}
+    };});
+  }
+  function search(){
+    var s=norm(q.value.trim()); clr.style.display=q.value?'block':'none';
+    if(s.length<2){hide();return;}
+    var words=s.split(/\s+/),local=[];
+    for(var i=0;i<idx.length&&local.length<30;i++){if(words.every(function(w){return idx[i].indexOf(w)>=0;})) local.push(i);}
+    render(local,[]);
+    clearTimeout(timer);
+    timer=setTimeout(function(){
+      if(s.length<3) return;
+      try{if(nomCtl) nomCtl.abort(); nomCtl=new AbortController();}catch(e){nomCtl=null;}
+      fetch('https://nominatim.openstreetmap.org/search?format=json&limit=4&countrycodes=se&accept-language=sv&q='+encodeURIComponent(q.value.trim()),nomCtl?{signal:nomCtl.signal}:{})
+        .then(function(r){return r.json();})
+        .then(function(d){ if(norm(q.value.trim())!==s) return;
+          var pls=(d||[]).map(function(x){var b=x.boundingbox;
+            return {name:x.display_name.split(',')[0],desc:x.display_name.split(',').slice(1,3).join(',').trim(),ll:[+x.lat,+x.lon],bb:b?[[+b[0],+b[2]],[+b[1],+b[3]]]:null};});
+          render(local,pls);
+        }).catch(function(){});
+    },450);
+  }
+  q.addEventListener('input',search);
+  q.addEventListener('keydown',function(e){
+    if(e.key==='Enter'){var f=res.querySelector('.r[data-p],.r[data-i]'); if(f) f.click();}
+    if(e.key==='Escape') hide();
+  });
+  clr.onclick=function(){q.value='';hide();clr.style.display='none';q.focus();};
+  map.on('click',hide);
+
+  // Föreslå ändring
+  var sheet=document.getElementById('sheet'),ff=document.getElementById('fform'),fwrap=document.getElementById('fwrap'),thanks=document.getElementById('thanks'),ferr=document.getElementById('ferr'),fsend=document.getElementById('fsend');
+  function openFix(i){var p=P[i]; ff.reset(); ff.bana_id.value=p[14]||''; ff.bana_namn.value=p[0]; ff.lat.value=p[1]; ff.lng.value=p[2];
+    document.getElementById('fname').textContent=p[0]+(p[5]?' · '+p[5]:''); fwrap.style.display='block'; thanks.style.display='none'; ferr.style.display='none'; sheet.classList.add('open');}
+  function closeFix(){sheet.classList.remove('open');}
+  document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('button.fix'); if(b){e.preventDefault(); openFix(+b.dataset.fix);}});
+  document.getElementById('fcancel').onclick=closeFix; document.getElementById('fclose').onclick=closeFix;
+  sheet.addEventListener('click',function(e){if(e.target===sheet) closeFix();});
+  ff.addEventListener('submit',function(e){e.preventDefault(); fsend.disabled=true; ferr.style.display='none';
+    fetch('/',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(new FormData(ff)).toString()})
+      .then(function(r){if(!r.ok) throw new Error(r.status); fwrap.style.display='none'; thanks.style.display='block';})
+      .catch(function(){ferr.style.display='block';}).then(function(){fsend.disabled=false;});
+  });
+
+  // Min plats
+  var toast=document.getElementById('toast'),tt;
+  function say(t){toast.textContent=t;toast.style.display='block';clearTimeout(tt);tt=setTimeout(function(){toast.style.display='none';},3500);}
+  var me=null,meC=null;
+  document.getElementById('loc').onclick=function(){
+    if(!navigator.geolocation){say('Din webbläsare stöder inte platstjänster');return;}
+    say('Hämtar din plats…');
+    navigator.geolocation.getCurrentPosition(function(pos){
+      var ll=[pos.coords.latitude,pos.coords.longitude];
+      if(!me){me=L.marker(ll,{icon:L.divIcon({className:'',html:'<div class="me"></div>',iconSize:[22,22],iconAnchor:[11,11]}),zIndexOffset:1000}).addTo(map);
+        meC=L.circle(ll,{radius:pos.coords.accuracy,weight:0,fillColor:'#3d7cf0',fillOpacity:.12}).addTo(map);}
+      else{me.setLatLng(ll);meC.setLatLng(ll).setRadius(pos.coords.accuracy);}
+      map.setView(ll,13); toast.style.display='none';
+    },function(err){say(err.code===1?'Platsåtkomst nekad – tillåt platstjänster i inställningarna':'Kunde inte hämta din plats');},
+    {enableHighAccuracy:true,timeout:10000,maximumAge:60000});
+  };
+})();
+</script>
+</body>
+</html>
